@@ -1,5 +1,5 @@
 ---
-name: youtube-agent
+name: youtube-cli
 description: Query YouTube videos and download transcripts using the youtube-cli command-line tool. Use when the user needs to search for YouTube videos, get video details, or download video transcripts/captions.
 ---
 

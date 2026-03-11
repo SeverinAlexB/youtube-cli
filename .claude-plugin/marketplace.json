@@ -1,0 +1,21 @@
+{
+  "name": "youtube-cli-skills",
+  "owner": {
+    "name": "SeverinAlexB"
+  },
+  "metadata": {
+    "description": "Skills for searching YouTube videos and downloading transcripts",
+    "version": "1.0.0"
+  },
+  "plugins": [
+    {
+      "name": "youtube-cli",
+      "description": "Use youtube-cli to search YouTube videos, get video details, and download transcripts",
+      "source": "./",
+      "strict": false,
+      "skills": [
+        "./skills/youtube-cli"
+      ]
+    }
+  ]
+}
