@@ -55,3 +55,19 @@ pub struct SearchResult {
     pub query: String,
     pub videos: Vec<VideoSummary>,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ChannelInfo {
+    pub channel_id: String,
+    pub name: String,
+    pub handle: Option<String>,
+    pub subscriber_count: Option<String>,
+    pub video_count: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ChannelVideosResult {
+    pub channel: ChannelInfo,
+    pub query: Option<String>,
+    pub videos: Vec<VideoSummary>,
+}

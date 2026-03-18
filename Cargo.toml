@@ -1,6 +1,6 @@
 [package]
 name = "youtube-cli"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 description = "CLI tool for searching YouTube videos and downloading transcripts"
 
@@ -40,6 +40,9 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 dirs = "6"
 sha2 = "0.10"
 hex = "0.4"
+
+# Base64 encoding (for protobuf params)
+base64 = "0.22"
 
 # Ctrl+C handling
 ctrlc = { version = "3", features = ["termination"] }

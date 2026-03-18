@@ -56,6 +56,14 @@ async fn main() -> Result<()> {
         Commands::Video { video } => {
             cmd_video(&config, &client, &video).await?;
         }
+        Commands::Channel {
+            channel,
+            search,
+            limit,
+            sort,
+        } => {
+            cmd_channel(&config, &client, &channel, search.as_deref(), limit, sort).await?;
+        }
     }
 
     Ok(())
@@ -195,6 +203,118 @@ async fn cmd_video(config: &AppConfig, client: &YouTubeClient, video: &str) -> R
     }
 
     Ok(())
+}
+
+async fn cmd_channel(
+    config: &AppConfig,
+    client: &api::YouTubeClient,
+    channel_input: &str,
+    search_query: Option<&str>,
+    limit: usize,
+    sort: cli::ChannelSort,
+) -> Result<()> {
+    if limit == 0 || limit > 200 {
+        anyhow::bail!("Limit must be between 1 and 200");
+    }
+    if let Some(q) = search_query {
+        if q.trim().is_empty() {
+            anyhow::bail!("Search query cannot be empty");
+        }
+    }
+
+    let cache = Cache::new(config.cache_dir.clone(), config.no_cache);
+
+    // Step 1: Resolve channel ID
+    let (channel_id, channel_name) =
+        resolve_channel_input(client, &cache, channel_input).await?;
+
+    // Step 2: Build cache key
+    let sort_str = if search_query.is_some() {
+        "search".to_string()
+    } else {
+        format!("{:?}", sort)
+    };
+    let query_str = search_query.unwrap_or("");
+    let cache_key = Cache::channel_cache_key(&channel_id, &sort_str, query_str);
+
+    // Step 3: Check cache
+    if let Some(hit) = cache.get_channel::<model::ChannelVideosResult>(&cache_key) {
+        if hit.data.videos.len() >= limit {
+            let mut result = hit.data;
+            result.videos.truncate(limit);
+            if config.json_output {
+                println!("{}", serde_json::to_string_pretty(&result)?);
+            } else {
+                print!("{}", output::format_channel_videos(&result));
+                println!("*Cached: {}*", output::format_cached_at(hit.cached_at));
+            }
+            return Ok(());
+        }
+    }
+
+    // Step 4: Fetch from API
+    let result = if let Some(query) = search_query {
+        client
+            .channel_search(&channel_id, &channel_name, query, limit)
+            .await?
+    } else {
+        client.channel_videos(&channel_id, sort, limit).await?
+    };
+
+    if result.videos.is_empty() {
+        if let Some(query) = search_query {
+            println!(
+                "No videos found for \"{}\" in channel {}",
+                query, result.channel.name
+            );
+        } else {
+            println!("No videos found for channel {}", result.channel.name);
+        }
+        return Ok(());
+    }
+
+    // Step 5: Cache
+    if let Err(e) = cache.set_channel(&cache_key, &result) {
+        tracing::debug!("Failed to cache channel results: {}", e);
+    }
+
+    // Step 6: Output
+    if config.json_output {
+        println!("{}", serde_json::to_string_pretty(&result)?);
+    } else {
+        print!("{}", output::format_channel_videos(&result));
+        println!(
+            "*Data from: {}*",
+            output::format_cached_at(SystemTime::now())
+        );
+    }
+
+    Ok(())
+}
+
+/// Resolve channel input (handle, URL, or ID) to (channel_id, channel_name).
+async fn resolve_channel_input(
+    client: &api::YouTubeClient,
+    cache: &Cache,
+    input: &str,
+) -> Result<(String, String)> {
+    use crate::api::channel::ChannelInput;
+
+    match api::YouTubeClient::parse_channel_input(input) {
+        ChannelInput::Id(id) => {
+            // We don't know the name yet; it will be populated from the browse response
+            Ok((id, "Unknown".to_string()))
+        }
+        ChannelInput::Handle(handle) => {
+            // Check cache for handle resolution
+            if let Some(hit) = cache.get_channel_id::<(String, String)>(&handle) {
+                return Ok(hit.data);
+            }
+            let (id, name) = client.resolve_handle(&handle).await?;
+            let _ = cache.set_channel_id(&handle, &(id.clone(), name.clone()));
+            Ok((id, name))
+        }
+    }
 }
 
 /// Parse a video ID from either a plain ID or various YouTube URL formats.

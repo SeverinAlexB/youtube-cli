@@ -17,6 +17,8 @@ pub struct CacheHit<T> {
 const SEARCH_TTL: Duration = Duration::from_secs(7 * 24 * 60 * 60); // 7 days
 const TRANSCRIPT_TTL: Duration = Duration::from_secs(30 * 24 * 60 * 60); // 30 days
 const VIDEO_TTL: Duration = Duration::from_secs(7 * 24 * 60 * 60); // 7 days
+const CHANNEL_TTL: Duration = Duration::from_secs(24 * 60 * 60); // 1 day
+const CHANNEL_RESOLVE_TTL: Duration = Duration::from_secs(30 * 24 * 60 * 60); // 30 days
 
 impl Cache {
     pub fn new(cache_dir: PathBuf, no_cache: bool) -> Self {
@@ -76,6 +78,49 @@ impl Cache {
     pub fn set_video<T: Serialize>(&self, video_id: &str, data: &T) -> Result<(), YoutubeError> {
         let path = self.dir.join(format!("video_{}.json", video_id));
         self.write_cached(&path, data)
+    }
+
+    pub fn get_channel<T: DeserializeOwned>(&self, cache_key: &str) -> Option<CacheHit<T>> {
+        if !self.read_enabled {
+            return None;
+        }
+        let path = self.dir.join(format!("channel_{}.json", cache_key));
+        self.read_cached(&path, CHANNEL_TTL)
+    }
+
+    pub fn set_channel<T: Serialize>(&self, cache_key: &str, data: &T) -> Result<(), YoutubeError> {
+        let path = self.dir.join(format!("channel_{}.json", cache_key));
+        self.write_cached(&path, data)
+    }
+
+    pub fn get_channel_id<T: DeserializeOwned>(&self, handle: &str) -> Option<CacheHit<T>> {
+        if !self.read_enabled {
+            return None;
+        }
+        let normalized = handle.trim_start_matches('@').to_lowercase();
+        let path = self.dir.join(format!("channel_id_{}.json", normalized));
+        self.read_cached(&path, CHANNEL_RESOLVE_TTL)
+    }
+
+    pub fn set_channel_id<T: Serialize>(
+        &self,
+        handle: &str,
+        data: &T,
+    ) -> Result<(), YoutubeError> {
+        let normalized = handle.trim_start_matches('@').to_lowercase();
+        let path = self.dir.join(format!("channel_id_{}.json", normalized));
+        self.write_cached(&path, data)
+    }
+
+    pub fn channel_cache_key(channel_id: &str, sort: &str, query: &str) -> String {
+        let mut hasher = Sha256::new();
+        hasher.update(channel_id.as_bytes());
+        hasher.update(b"\0");
+        hasher.update(sort.as_bytes());
+        hasher.update(b"\0");
+        hasher.update(query.as_bytes());
+        let result = hasher.finalize();
+        hex::encode(&result[..8])
     }
 
     pub fn search_cache_key(query: &str, sort: &str, duration: &str) -> String {

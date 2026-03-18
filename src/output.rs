@@ -1,4 +1,4 @@
-use crate::model::{SearchResult, TranscriptResult, VideoDetail};
+use crate::model::{ChannelVideosResult, SearchResult, TranscriptResult, VideoDetail};
 use std::time::SystemTime;
 
 pub fn format_search_results(result: &SearchResult) -> String {
@@ -26,6 +26,76 @@ pub fn format_search_results(result: &SearchResult) -> String {
         }
 
         out.push_str(&format!("   {} \n", meta_parts.join(" — ")));
+        out.push_str(&format!(
+            "   https://youtube.com/watch?v={}\n",
+            video.video_id
+        ));
+
+        if let Some(ref desc) = video.description {
+            let truncated = if desc.len() > 150 {
+                format!("{}...", &desc[..150])
+            } else {
+                desc.clone()
+            };
+            out.push_str(&format!("   {}\n", truncated));
+        }
+
+        out.push('\n');
+    }
+
+    out
+}
+
+pub fn format_channel_videos(result: &ChannelVideosResult) -> String {
+    let mut out = String::new();
+
+    out.push_str(&format!("## Channel: {}\n", result.channel.name));
+
+    let mut meta = Vec::new();
+    if let Some(ref handle) = result.channel.handle {
+        meta.push(handle.clone());
+    }
+    if let Some(ref subs) = result.channel.subscriber_count {
+        meta.push(subs.clone());
+    }
+    if let Some(ref count) = result.channel.video_count {
+        meta.push(format!("{} videos", count));
+    }
+    if !meta.is_empty() {
+        out.push_str(&format!("{}\n", meta.join(" — ")));
+    }
+    out.push_str(&format!(
+        "https://youtube.com/channel/{}\n\n",
+        result.channel.channel_id
+    ));
+
+    if let Some(ref query) = result.query {
+        out.push_str(&format!(
+            "### Search: \"{}\" (showing {})\n\n",
+            query,
+            result.videos.len()
+        ));
+    } else {
+        out.push_str(&format!("### Videos (showing {})\n\n", result.videos.len()));
+    }
+
+    for (i, video) in result.videos.iter().enumerate() {
+        out.push_str(&format!("{}. **{}**\n", i + 1, video.title));
+
+        let mut meta_parts: Vec<String> = Vec::new();
+        if let Some(ref dur) = video.duration {
+            meta_parts.push(dur.clone());
+        }
+        if let Some(ref views) = video.views {
+            meta_parts.push(views.clone());
+        }
+        if let Some(ref published) = video.published {
+            meta_parts.push(published.clone());
+        }
+
+        if !meta_parts.is_empty() {
+            out.push_str(&format!("   {} \n", meta_parts.join(" — ")));
+        }
         out.push_str(&format!(
             "   https://youtube.com/watch?v={}\n",
             video.video_id

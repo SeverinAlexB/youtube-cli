@@ -1,3 +1,4 @@
+pub mod channel;
 pub mod search;
 pub mod transcript;
 

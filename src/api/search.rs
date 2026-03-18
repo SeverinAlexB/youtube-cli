@@ -76,54 +76,9 @@ fn parse_search_response(
                 None => continue, // skip ads, channels, playlists, etc.
             };
 
-            let video_id = renderer
-                .get("videoId")
-                .and_then(|v| v.as_str())
-                .unwrap_or_default()
-                .to_string();
-
-            if video_id.is_empty() {
-                continue;
+            if let Some(video) = parse_video_renderer(renderer, None) {
+                videos.push(video);
             }
-
-            let title = renderer
-                .pointer("/title/runs/0/text")
-                .and_then(|v| v.as_str())
-                .unwrap_or("Unknown")
-                .to_string();
-
-            let channel = renderer
-                .pointer("/ownerText/runs/0/text")
-                .and_then(|v| v.as_str())
-                .unwrap_or("Unknown")
-                .to_string();
-
-            let duration = renderer
-                .pointer("/lengthText/simpleText")
-                .and_then(|v| v.as_str())
-                .map(|s| s.to_string());
-
-            let views = renderer
-                .pointer("/viewCountText/simpleText")
-                .and_then(|v| v.as_str())
-                .map(|s| s.to_string());
-
-            let published = renderer
-                .pointer("/publishedTimeText/simpleText")
-                .and_then(|v| v.as_str())
-                .map(|s| s.to_string());
-
-            let description = extract_description(renderer);
-
-            videos.push(VideoSummary {
-                video_id,
-                title,
-                channel,
-                duration,
-                views,
-                published,
-                description,
-            });
         }
 
         if videos.len() >= limit {
@@ -132,6 +87,69 @@ fn parse_search_response(
     }
 
     Ok(videos)
+}
+
+/// Extract a VideoSummary from a videoRenderer JSON object.
+/// If `channel_override` is provided, it's used instead of parsing from the renderer.
+pub(crate) fn parse_video_renderer(
+    renderer: &serde_json::Value,
+    channel_override: Option<&str>,
+) -> Option<VideoSummary> {
+    let video_id = renderer
+        .get("videoId")
+        .and_then(|v| v.as_str())
+        .unwrap_or_default()
+        .to_string();
+
+    if video_id.is_empty() {
+        return None;
+    }
+
+    let title = renderer
+        .pointer("/title/runs/0/text")
+        .or_else(|| renderer.pointer("/title/simpleText"))
+        .and_then(|v| v.as_str())
+        .unwrap_or("Unknown")
+        .to_string();
+
+    let channel = channel_override
+        .map(|s| s.to_string())
+        .unwrap_or_else(|| {
+            renderer
+                .pointer("/ownerText/runs/0/text")
+                .and_then(|v| v.as_str())
+                .unwrap_or("Unknown")
+                .to_string()
+        });
+
+    let duration = renderer
+        .pointer("/lengthText/simpleText")
+        .or_else(|| renderer.pointer("/lengthText/accessibility/accessibilityData/label"))
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string());
+
+    let views = renderer
+        .pointer("/viewCountText/simpleText")
+        .or_else(|| renderer.pointer("/viewCountText/runs/0/text"))
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string());
+
+    let published = renderer
+        .pointer("/publishedTimeText/simpleText")
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string());
+
+    let description = extract_description(renderer);
+
+    Some(VideoSummary {
+        video_id,
+        title,
+        channel,
+        duration,
+        views,
+        published,
+        description,
+    })
 }
 
 fn extract_description(renderer: &serde_json::Value) -> Option<String> {

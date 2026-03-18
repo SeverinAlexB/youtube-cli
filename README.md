@@ -127,6 +127,52 @@ Rust is a memory-safe compiled programming language for building
 high-performance systems...
 ```
 
+### Browse channel videos
+
+```bash
+youtube-cli channel @hubermanlab
+youtube-cli channel @hubermanlab --sort popular --limit 5
+youtube-cli channel @hubermanlab --sort oldest --limit 10
+youtube-cli channel UCBJycsmduvYEL83R_U4JriQ --limit 5
+youtube-cli channel "https://youtube.com/@mkbhd" --limit 5
+```
+
+Accepts channel handles (`@hubermanlab`), channel IDs (`UCxxxxxx`), or full YouTube URLs.
+
+**Options:**
+
+| Flag | Description | Default |
+|---|---|---|
+| `--limit <n>` | Max results to return (1-200) | 30 |
+| `--sort <method>` | `newest`, `oldest`, `popular` | `newest` |
+| `--search <query>` | Search within the channel's videos | — |
+
+**Example output:**
+
+```markdown
+## Channel: Andrew Huberman
+https://youtube.com/channel/UC2D2CMWXMOVWx7giW1n3LIg
+
+### Videos (showing 3)
+
+1. **Science-Based Meditation Tools | Dr. Richard Davidson**
+   2:43:45 — 115,266 views — 2 days ago
+   https://youtube.com/watch?v=hlOA8ObQJXo
+
+2. **Benefits of Sauna & Deliberate Heat Exposure**
+   39:20 — 58,764 views — 6 days ago
+   https://youtube.com/watch?v=iuPQmw4Ax00
+```
+
+### Search within a channel
+
+```bash
+youtube-cli channel @hubermanlab --search "sleep"
+youtube-cli channel @mkbhd --search "iPhone" --limit 10
+```
+
+Returns only videos from the specified channel that match the query.
+
 ### Global flags
 
 | Flag | Description |
@@ -152,6 +198,7 @@ Cache TTLs:
 | Data type | TTL |
 |---|---|
 | Search results | 7 days |
+| Channel listings | 1 day |
 | Transcripts | 30 days |
 | Video details | 7 days |
 
@@ -162,6 +209,8 @@ Every result includes a `Data from:` or `Cached:` timestamp so you know how fres
 youtube-cli uses YouTube's internal InnerTube API — the same API that powers the YouTube website and mobile apps. No API key, no OAuth, no browser needed.
 
 - **Search** uses the `/youtubei/v1/search` endpoint with the WEB client
+- **Channel** uses the `/youtubei/v1/browse` endpoint to list channel videos, with protobuf-encoded continuation tokens for sort order control
+- **Channel search** fetches the channel's search page and extracts results from the embedded `ytInitialData`
 - **Transcripts** use a two-step process: fetch video page to extract the API key, then call the `/youtubei/v1/player` endpoint to get caption track URLs, then fetch and parse the caption XML
 - **Video details** are extracted from the same player API response
 
@@ -182,6 +231,8 @@ This repo includes a [Claude Code skill](https://code.claude.com/docs/en/skills)
 Once installed, Claude can handle requests like:
 
 - *"Find the top Huberman Lab episodes on sleep"*
+- *"What are the most popular videos on the MKBHD channel?"*
+- *"Search the Veritasium channel for videos about physics"*
 - *"Download and summarize the transcript from this YouTube video"*
 - *"Search for Rust programming tutorials sorted by views"*
 - *"What languages are available for this video's captions?"*

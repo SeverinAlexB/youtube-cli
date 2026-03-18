@@ -58,6 +58,24 @@ pub enum Commands {
         /// YouTube video ID or URL
         video: String,
     },
+
+    /// List or search videos from a YouTube channel
+    Channel {
+        /// Channel ID, handle (@name), or channel URL
+        channel: String,
+
+        /// Search within the channel's videos
+        #[arg(long)]
+        search: Option<String>,
+
+        /// Max number of results (1-200)
+        #[arg(long, default_value = "30")]
+        limit: usize,
+
+        /// Sort order for video listing (ignored when --search is used)
+        #[arg(long, value_enum, default_value_t = ChannelSort::Newest)]
+        sort: ChannelSort,
+    },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
@@ -66,6 +84,13 @@ pub enum SortOrder {
     Date,
     Views,
     Rating,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+pub enum ChannelSort {
+    Newest,
+    Oldest,
+    Popular,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]

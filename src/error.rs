@@ -17,6 +17,9 @@ pub enum YoutubeError {
     #[error("Transcript language not available for video {0}: {1}")]
     LanguageNotAvailable(String, String),
 
+    #[error("Channel not found: {0}")]
+    ChannelNotFound(String),
+
     #[error("Rate limited by YouTube (429). Retries exhausted.")]
     RateLimited,
 
