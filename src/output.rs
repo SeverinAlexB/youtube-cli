@@ -32,8 +32,9 @@ pub fn format_search_results(result: &SearchResult) -> String {
         ));
 
         if let Some(ref desc) = video.description {
-            let truncated = if desc.len() > 150 {
-                format!("{}...", &desc[..150])
+            let truncated = if desc.chars().count() > 150 {
+                let end: String = desc.chars().take(150).collect();
+                format!("{}...", end)
             } else {
                 desc.clone()
             };
@@ -102,8 +103,9 @@ pub fn format_channel_videos(result: &ChannelVideosResult) -> String {
         ));
 
         if let Some(ref desc) = video.description {
-            let truncated = if desc.len() > 150 {
-                format!("{}...", &desc[..150])
+            let truncated = if desc.chars().count() > 150 {
+                let end: String = desc.chars().take(150).collect();
+                format!("{}...", end)
             } else {
                 desc.clone()
             };
